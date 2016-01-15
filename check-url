@@ -2,10 +2,6 @@
 
 URL="$1"
 
-if [[ $URL == ^http://* ]]; then
-  URL="http://$URL"
-fi;
-
 while true; do
   STATUS=$( curl -w '%{http_code}' -s --output /dev/null "$URL")
 
