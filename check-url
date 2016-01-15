@@ -2,15 +2,17 @@
 
 URL="$1"
 
+INTERVAL=10;
+
 while true; do
-  STATUS=$( curl -w '%{http_code}' -s --output /dev/null "$URL")
+  TIME=$( date +"%Y-%m-%d %H:%M:%S" )
+  HTTP_CODE=$( curl -w '%{http_code}' -s --output /dev/null "$URL")
 
-  if [[ $STATUS == "404" ]]; then
-    echo "The URL $URL is down :("
-  else
-    notify-send --urgency critical --expire-time 2000 --icon network-receive --category network.connected "The URL is UP!" "$URL"
-  fi;
+  MESSAGE="$URL Status: $HTTP_CODE"
 
-  sleep 10
+  echo "$TIME $MESSAGE"
+  notify-send --expire-time $(( INTERVAL * 1000 )) "$URL" "$MESSAGE"
+
+  sleep $INTERVAL
 done
 
