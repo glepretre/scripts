@@ -1,0 +1,18 @@
+#!/bin/bash
+
+URL="$1"
+
+INTERVAL=10;
+
+while true; do
+  TIME=$( date +"%Y-%m-%d %H:%M:%S" )
+  HTTP_CODE=$( curl -w '%{http_code}' -s --output /dev/null "$URL")
+
+  MESSAGE="$URL Status: $HTTP_CODE"
+
+  echo "$TIME $MESSAGE"
+  notify-send --expire-time $(( INTERVAL * 1000 )) "$URL" "$MESSAGE"
+
+  sleep $INTERVAL
+done
+
