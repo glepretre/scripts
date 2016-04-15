@@ -1,0 +1,7 @@
+#!/bin/bash
+
+IDK_MEME="¯\_(ツ)_/¯"
+
+echo $IDK_MEME
+echo $IDK_MEME | xclip -selection primary
+echo $IDK_MEME | xclip -selection clipboard

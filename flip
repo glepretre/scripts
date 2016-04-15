@@ -1,0 +1,7 @@
+#!/bin/bash
+
+FLIP_TABLE_MEME="(╯°□°)╯︵ ┻━┻"
+
+echo $FLIP_TABLE_MEME
+echo $FLIP_TABLE_MEME | xclip -selection primary
+echo $FLIP_TABLE_MEME | xclip -selection clipboard
