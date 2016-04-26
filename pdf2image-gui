@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+INPUT_PDF=$(zenity --file-selection --file-filter='PDF files (pdf) | *.pdf' --title="Select a PDF file")
+
+if [ -z "$INPUT_PDF" ]; then
+  return 0
+fi
+
+OUTPUT_PNGS="${INPUT_PDF%.pdf}.png"
+
+#echo $INPUT_PDF
+#echo $OUTPUT_PNGS
+
+convert -verbose -density 150 -quality 90 "$INPUT_PDF" "$OUTPUT_PNGS"
