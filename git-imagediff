@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Arguments validation taken from
+# https://github.com/holman/spaceman-diff/blob/v1.0.3/spaceman-diff
+
+# set -x
+set -e
+
+help()
+{
+  cat <<EOF
+  This should normally be called via \`git-diff(1)\`.
+
+  USAGE:
+    git-imagediff fileA shaA modeA fileB shaB modeB
+EOF
+}
+
+if [ "$1" = "" ] ; then
+  help
+  exit
+fi
+
+fileA=$2
+fileB=$5
+labelA='%i'
+labelB='%i'
+
+NULLIMG=$(mktemp --suffix ".png")
+
+
+if ! [ -f "$fileA" ] ; then
+  convert "$fileB" -alpha set -channel RGB -fill '#000000' +opaque none $NULLIMG
+  fileA="$NULLIMG"
+  labelA="/dev/null"
+fi
+
+if ! [ -f "$fileB" ] ; then
+  convert "$fileA" -alpha set -channel RGB -fill '#000000' +opaque none $NULLIMG
+  fileB="$NULLIMG"
+  labelB="/dev/null"
+fi
+
+# original
+# http://www.akikoskinen.info/image-diffs-with-git/
+# compare $2 $1 png:- | montage -geometry +4+4 $2 - $1 png:- | display -title "$1" -
+
+IMGTEMP=$(mktemp --suffix ".png")
+
+# $2 $1 params order in git context
+
+montage -geometry +0+0 -label "$labelA" "$fileA" -label "$labelB" "$fileB" "$IMGTEMP"
+#
+# NOTE: directly displaying image may be annoying when there several
+# copying them into current directory is less intrusive
+#
+cp "$IMGTEMP" .
+# $1 $2 order otherwise, comparing 2 images
+# montage -geometry +0+0 -label '%i' "$1" "$2" png:- | display -title "$1"
