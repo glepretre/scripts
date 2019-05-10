@@ -4,7 +4,7 @@
 # To add in .bashrc:
 # if [ -f ${HOME}/bin/gpg-agent-launcher.sh ] && [ -f ${HOME}/.gnupg/secring.gpg ]
 # then
-#   eval `${HOME}/bin/gpg-agent-launcher.sh`
+#   eval $(${HOME}/bin/gpg-agent-launcher.sh)
 # fi
 #
 

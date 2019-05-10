@@ -4,7 +4,7 @@
 # To add in .bashrc:
 # if [ -f ${HOME}/bin/ssh-agent-launcher.sh ] && [ -f ${HOME}/.ssh/id_rsa ]
 # then
-#   eval `${HOME}/bin/ssh-agent-launcher.sh`
+#   eval $(${HOME}/bin/ssh-agent-launcher.sh)
 # fi
 #
 
