@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# https://stackoverflow.com/a/16658508/3049002
+v4l2-ctl -c focus_auto=0
+
+vlc v4l2:///dev/video0
