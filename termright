@@ -6,21 +6,5 @@
 # https://askubuntu.com/a/740572
 terminator && ~/bin/sm && xdotool windowsize $(xdotool getactivewindow) 100% 100%
 
+# See also:
 # https://unix.stackexchange.com/a/51817/229657
-# firefox -new-instance -new-window "http://www.reddit.org" &
-
-#terminator &
-
-# Process ID of the process we just launched
-#PID=$!
-
-# Window ID of the process...pray that there's
-# only one window! Otherwise this might break.
-# We also need to wait for the process to spawn
-# a window.
-#while [ -z "$WID" ]; do
-  #WID=$(wmctrl -lp | grep $PID | cut "-d " -f1)
-#done
-# Set the size and location of the window
-# See man wmctrl for more info
-#wmctrl -i -r "$WID" -e 0,1920,0,1920,1080
