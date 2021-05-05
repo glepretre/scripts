@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Using https://github.com/chubin/wttr.in
+
+# v1: array
+curl wttr.in/lyon
+
+# v2: graph
+curl v2.wttr.in/lyon
