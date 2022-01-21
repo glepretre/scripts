@@ -1,0 +1,7 @@
+#!/bin/bash
+
+GOUTER_SIGN="ʘ‿ʘ"
+
+echo $GOUTER_SIGN
+echo $GOUTER_SIGN | xclip -selection primary
+echo $GOUTER_SIGN | xclip -selection clipboard
