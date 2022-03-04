@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+# set -x
+
+DO_NOT_DISTUTB_STATUS=$( gsettings get net.launchpad.indicator.notifications do-not-disturb )
+
+if [[ "$DO_NOT_DISTUTB_STATUS" = true ]]
+then
+  NEW_VALUE=false
+else
+  NEW_VALUE=true
+fi
+
+# echo "current status is: $DO_NOT_DISTUTB_STATUS"
+# echo "toggling it to: $NEW_VALUE"
+
+gsettings set net.launchpad.indicator.notifications do-not-disturb "$NEW_VALUE"
+
+# gsettings get net.launchpad.indicator.notifications do-not-disturb
