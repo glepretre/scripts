@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PUT_TABLE_BACK_MEME="┬─┬ノ(ಠ_ಠノ)"
+
+echo $PUT_TABLE_BACK_MEME
+echo $PUT_TABLE_BACK_MEME | xclip -selection primary
+echo $PUT_TABLE_BACK_MEME | xclip -selection clipboard
