@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e
+# set -x
+
+# https://ubuntu-mate.community/t/how-to-automatically-switch-between-light-and-dark-themes/23907/5
+
+CURRENT_THEME=$( gsettings get org.mate.Marco.general theme )
+
+if [[ "$CURRENT_THEME" = "'Yaru'" ]]
+then
+    GtkTheme='Yaru-blue-dark'
+    MetacityTheme='Yaru-dark'
+    IconTheme='Yaru-blue-dark'
+
+else
+    GtkTheme='Yaru-blue'
+    MetacityTheme='Yaru'
+    IconTheme='Yaru-blue'
+fi
+
+echo "current theme is: $CURRENT_THEME"
+echo "toggling it to: $MetacityTheme"
+
+gsettings set org.mate.Marco.general theme "$MetacityTheme"
+gsettings set org.mate.interface gtk-theme "$GtkTheme"
+gsettings set org.gnome.desktop.interface gtk-theme "$GtkTheme"
+gsettings set org.mate.interface icon-theme "$IconTheme"
+gsettings set org.gnome.desktop.interface icon-theme "$IconTheme"
+
