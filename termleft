@@ -1,0 +1,12 @@
+#!/bin/sh
+
+#set -e
+#set -x
+
+# https://askubuntu.com/a/740572
+# https://unix.stackexchange.com/a/359311
+# https://unix.stackexchange.com/a/51817/229657
+terminator &&
+  xdotool windowmove $(xdotool getactivewindow) 0 0 &&
+  # 100% 100% seems to always move it to main screen
+  xdotool windowsize $(xdotool getactivewindow) 99% 99%
