@@ -1,0 +1,3 @@
+#!/bin/bash
+
+firefox-nightly -no-remote -profile "/opt/openai/chatgpt" "https://chat.openai.com/"
