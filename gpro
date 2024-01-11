@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# firefox-nightly -no-remote -profile "/opt/gpro" -private-window "https://gmail.com/"
+google-chrome-stable --no-default-browser-check --no-first-run --disable-default-apps --user-data-dir="/opt/gpro" "https://gmail.com"
