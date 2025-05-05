@@ -9,7 +9,7 @@ const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
 let installed;
 try {
-  const npmLsOutput = execSync('npm ls --all --json', { encoding: 'utf-8' });
+  const npmLsOutput = execSync('npm ls --json', { encoding: 'utf-8' });
   installed = JSON.parse(npmLsOutput).dependencies || {};
 } catch (error) {
   console.error('❌ Error calling `npm ls`:\n', error.message);
