@@ -12,11 +12,13 @@ then
     GtkTheme='Yaru-blue-dark'
     MetacityTheme='Yaru-dark'
     IconTheme='Yaru-blue-dark'
+    Background="$HOME/wallpapers/dark.png"
 
 else
     GtkTheme='Yaru-blue'
     MetacityTheme='Yaru'
     IconTheme='Yaru-blue'
+    Background="$HOME/wallpapers/light.png"
 fi
 
 echo "current theme is: $CURRENT_THEME"
@@ -27,4 +29,4 @@ gsettings set org.mate.interface gtk-theme "$GtkTheme"
 gsettings set org.gnome.desktop.interface gtk-theme "$GtkTheme"
 gsettings set org.mate.interface icon-theme "$IconTheme"
 gsettings set org.gnome.desktop.interface icon-theme "$IconTheme"
-
+gsettings set org.mate.background picture-filename "$Background"
