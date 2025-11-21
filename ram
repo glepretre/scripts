@@ -10,10 +10,10 @@ awk 'BEGIN {
   rss[$1] += $2
 }
 END {
-  printf "%-25s %10s %10s\n", "COMMAND", "MB", "PERCENT";
+  printf "%-25s %15s %12s\n", "COMMAND", "MEMORY", "PERCENT";
   for (p in rss) {
     mb = rss[p] / 1024;
     pct = 100 * rss[p] / memtotal_kb;
-    printf "%-25s %10.1f %9.2f%%\n", p, mb, pct;
+    printf "%-25s %10.1f MB %9.2f%%\n", p, mb, pct;
   }
 }' | sort -k2 -nr | head -n 20
