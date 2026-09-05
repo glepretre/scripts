@@ -32,7 +32,7 @@ Features:
 - Smart analysis: ignores generated lockfiles (package-lock.json, uv.lock).
 - Accurate metrics: total, blank, comment, and non-blank lines (SLOC).
 - Multi-level breakdown:
-    * By functional domain (Backend, Frontend, Infra/DevOps, Config/Docs)
+    * By functional domain (Backend, Frontend, Scripts, Infra/DevOps, Config/Docs)
     * By detailed subtype (Domain, Tests, Migrations, Commands, UI, Styles, etc.)
     * By programming language / format
     * File by file
@@ -104,7 +104,20 @@ IGNORED_DIRECTORIES = {
 }
 
 
-def detect_language(path: str, filepath: Optional[Path] = None) -> str:
+def read_shebang(filepath: Path) -> str:
+    try:
+        with filepath.open("r", encoding="utf-8", errors="replace") as source_file:
+            first_line = source_file.readline()
+    except (OSError, UnicodeError):
+        return ""
+    return first_line if first_line.startswith("#!") else ""
+
+
+def detect_language(
+    path: str,
+    filepath: Optional[Path] = None,
+    shebang: Optional[str] = None,
+) -> str:
     basename = os.path.basename(path)
     ext = os.path.splitext(path)[1].lower()
 
@@ -134,16 +147,11 @@ def detect_language(path: str, filepath: Optional[Path] = None) -> str:
         return "DevOps / Config"
 
     if not ext:
-        try:
-            with (filepath or Path(path)).open(
-                "r", encoding="utf-8", errors="replace"
-            ) as source_file:
-                first_line = source_file.readline()
-        except (OSError, UnicodeError):
-            first_line = ""
+        if shebang is None:
+            shebang = read_shebang(filepath or Path(path))
 
-        if first_line.startswith("#!"):
-            interpreter = first_line[2:].strip().split()
+        if shebang:
+            interpreter = shebang[2:].strip().split()
             if interpreter:
                 executable = os.path.basename(interpreter[0])
                 if executable == "env":
@@ -169,7 +177,11 @@ def detect_language(path: str, filepath: Optional[Path] = None) -> str:
     return "Other"
 
 
-def classify_file(rel_path: str) -> Tuple[str, str, bool]:
+def classify_file(
+    rel_path: str,
+    language: str,
+    has_shebang: bool,
+) -> Tuple[str, str, bool]:
     """
     Return a tuple: (primary_domain, subdomain, is_test).
     """
@@ -223,6 +235,10 @@ def classify_file(rel_path: str) -> Tuple[str, str, bool]:
     # 5. Root-level configuration
     if basename in ("pyproject.toml", "package.json"):
         return ("Configuration", "Config - Dependencies", False)
+
+    # 6. Executable scripts
+    if has_shebang:
+        return ("Scripts", f"Scripts - {language}", False)
 
     return ("Other", "Miscellaneous Files", False)
 
@@ -364,8 +380,9 @@ def collect_metrics(root: Path) -> List[FileMetric]:
         if not full_path.is_file():
             continue
 
-        lang = detect_language(rel_path, full_path)
-        domain, subdomain, is_test = classify_file(rel_path)
+        shebang = read_shebang(full_path)
+        lang = detect_language(rel_path, full_path, shebang)
+        domain, subdomain, is_test = classify_file(rel_path, lang, bool(shebang))
         total, blank, comments = analyze_file_content(full_path, lang)
         non_blank = total - blank
         code = max(0, non_blank - comments)
@@ -510,7 +527,7 @@ def generate_report(
         # Aggregate by primary domain
         domain_data = aggregate_group(metrics, lambda m: m.domain)
         # Sort Backend, Frontend, Infra, Config, Docs, etc.
-        order = ["Backend", "Frontend", "Infra / DevOps", "Configuration", "Documentation", "Other"]
+        order = ["Backend", "Frontend", "Scripts", "Infra / DevOps", "Configuration", "Documentation", "Other"]
         sorted_keys = sorted(domain_data.keys(), key=lambda k: (order.index(k) if k in order else 99, -domain_data[k]["non_blank"]))
 
         rows = []
