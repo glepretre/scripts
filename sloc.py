@@ -79,7 +79,7 @@ IGNORED_DIRECTORIES = {
 }
 
 
-def detect_language(path: str) -> str:
+def detect_language(path: str, filepath: Optional[Path] = None) -> str:
     basename = os.path.basename(path)
     ext = os.path.splitext(path)[1].lower()
 
@@ -109,6 +109,40 @@ def detect_language(path: str) -> str:
         return "Shell"
     if basename in ("Dockerfile", "compose.yaml", "docker-compose.yml") or basename.startswith(".docker") or basename.startswith(".git") or basename.startswith(".prettier") or basename.startswith(".env"):
         return "DevOps / Config"
+
+    if not ext:
+        try:
+            with (filepath or Path(path)).open(
+                "r", encoding="utf-8", errors="replace"
+            ) as source_file:
+                first_line = source_file.readline()
+        except (OSError, UnicodeError):
+            first_line = ""
+
+        if first_line.startswith("#!"):
+            interpreter = first_line[2:].strip().split()
+            if interpreter:
+                executable = os.path.basename(interpreter[0])
+                if executable == "env":
+                    executable = next(
+                        (
+                            part
+                            for part in interpreter[1:]
+                            if not part.startswith("-") and "=" not in part
+                        ),
+                        "",
+                    )
+                    executable = os.path.basename(executable)
+
+                if re.fullmatch(r"(?:python|pypy)(?:\d+(?:\.\d+)*)?", executable):
+                    return "Python"
+                if executable in ("node", "nodejs", "deno", "bun"):
+                    return "JavaScript"
+                if executable in ("ts-node", "tsx"):
+                    return "TypeScript"
+                if executable in ("sh", "bash", "dash", "ksh", "zsh", "fish"):
+                    return "Shell"
+
     return "Autre"
 
 
@@ -308,7 +342,7 @@ def collect_metrics(root: Path) -> List[FileMetric]:
         if not full_path.is_file():
             continue
 
-        lang = detect_language(rel_path)
+        lang = detect_language(rel_path, full_path)
         domain, subdomain, is_lockfile, is_test = classify_file(rel_path)
         total, blank, comments = analyze_file_content(full_path, lang)
         non_blank = total - blank
