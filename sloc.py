@@ -2,6 +2,29 @@
 """
 sloc.py - Smart static analysis of lines of code (LOC / SLOC).
 
+Usage:
+
+# Summary by type (default)
+./sloc.py
+
+# Detailed breakdown by subcategory
+./sloc.py --detailed
+
+# Breakdown by programming language
+./sloc.py --language
+
+# File-by-file details
+./sloc.py --files
+
+# Full report (all views combined)
+./sloc.py --by all
+
+# Markdown output (convenient for pasting into a PR or documentation)
+./sloc.py --markdown
+
+# Full JSON export for CI/CD tooling
+./sloc.py --json
+
 Features:
 - Smart analysis: ignores generated lockfiles (package-lock.json, uv.lock).
 - Accurate metrics: total, blank, comment, and non-blank lines (SLOC).
