@@ -4,8 +4,11 @@ sloc.py - Smart static analysis of lines of code (LOC / SLOC).
 
 Usage:
 
-# Summary by type (default)
+# Full report (all views combined, default)
 ./sloc.py
+
+# Summary by type
+./sloc.py --by type
 
 # Detailed breakdown by subcategory
 ./sloc.py --detailed
@@ -16,7 +19,7 @@ Usage:
 # File-by-file details
 ./sloc.py --files
 
-# Full report (all views combined)
+# Full report (explicit form)
 ./sloc.py --by all
 
 # Markdown output (convenient for pasting into a PR or documentation)
@@ -668,8 +671,8 @@ def main():
     parser.add_argument(
         "--by",
         choices=["type", "subtypes", "language", "files", "all"],
-        default="type",
-        help="Primary aggregation type (default: type)",
+        default="all",
+        help="Primary aggregation type (default: all)",
     )
     parser.add_argument(
         "--detailed",
