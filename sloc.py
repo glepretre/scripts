@@ -3,10 +3,10 @@
 scripts/count_loc.py - Analyse statique intelligente des lignes de code (LOC / SLOC).
 
 Fonctionnalités :
-- Analyse intelligente : sépare le code source réel des lockfiles générés (package-lock.json, uv.lock).
+- Analyse intelligente : ignore les lockfiles générés (package-lock.json, uv.lock).
 - Mesure précise : Total, Lignes vides, Commentaires et Lignes hors vide (SLOC).
 - Ventilation multi-niveaux :
-    * Par domaine fonctionnel (Backend, Frontend, Infra/DevOps, Config/Docs, Lockfiles)
+    * Par domaine fonctionnel (Backend, Frontend, Infra/DevOps, Config/Docs)
     * Par sous-type détaillé (Domaine, Tests, Migrations, Commandes, UI, Styles, etc.)
     * Par langage de programmation / format
     * Fichier par fichier
@@ -38,7 +38,6 @@ class FileMetric:
     language: str
     domain: str
     subdomain: str
-    is_lockfile: bool
     is_test: bool
     total_lines: int
     blank_lines: int
@@ -83,8 +82,6 @@ def detect_language(path: str, filepath: Optional[Path] = None) -> str:
     basename = os.path.basename(path)
     ext = os.path.splitext(path)[1].lower()
 
-    if basename in LOCKFILE_NAMES:
-        return "Lockfile"
     if ext == ".py":
         return "Python"
     if ext == ".tsx":
@@ -146,66 +143,62 @@ def detect_language(path: str, filepath: Optional[Path] = None) -> str:
     return "Autre"
 
 
-def classify_file(rel_path: str) -> Tuple[str, str, bool, bool]:
+def classify_file(rel_path: str) -> Tuple[str, str, bool]:
     """
-    Retourne un tuple: (domaine_principal, sous_domaine, est_lockfile, est_test)
+    Retourne un tuple: (domaine_principal, sous_domaine, est_test)
     """
     basename = os.path.basename(rel_path)
     norm = rel_path.replace("\\", "/")
 
-    # 1. Lockfiles
-    if basename in LOCKFILE_NAMES:
-        return ("Lockfiles (Générés)", "Lockfile Dépendances", True, False)
-
-    # 2. Backend
+    # 1. Backend
     if norm.startswith("backend/"):
         if norm.startswith("backend/cinema/tests/"):
-            return ("Backend", "Backend - Tests", False, True)
+            return ("Backend", "Backend - Tests", True)
         if norm.startswith("backend/cinema/migrations/"):
-            return ("Backend", "Backend - Migrations", False, False)
+            return ("Backend", "Backend - Migrations", False)
         if norm.startswith("backend/cinema/management/"):
-            return ("Backend", "Backend - Commandes CLI", False, False)
+            return ("Backend", "Backend - Commandes CLI", False)
         if norm.startswith("backend/cinema/"):
-            return ("Backend", "Backend - Domaine & API", False, False)
+            return ("Backend", "Backend - Domaine & API", False)
         if norm.startswith("backend/config/") or norm == "backend/manage.py":
-            return ("Backend", "Backend - Config & Core", False, False)
+            return ("Backend", "Backend - Config & Core", False)
         if norm == "backend/pyproject.toml":
-            return ("Configuration", "Config - Dépendances Python", False, False)
+            return ("Configuration", "Config - Dépendances Python", False)
         if basename in ("Dockerfile", ".dockerignore"):
-            return ("Infra / DevOps", "Docker & Déploiement", False, False)
-        return ("Backend", "Backend - Autre", False, False)
+            return ("Infra / DevOps", "Docker & Déploiement", False)
+        return ("Backend", "Backend - Autre", False)
 
-    # 3. Frontend
+    # 2. Frontend
     if norm.startswith("frontend/"):
         if norm.startswith("frontend/src/") and ("test" in norm or "spec" in norm):
-            return ("Frontend", "Frontend - Tests", False, True)
+            return ("Frontend", "Frontend - Tests", True)
         if norm.startswith("frontend/src/") and norm.endswith(".css"):
-            return ("Frontend", "Frontend - Styles & Design", False, False)
+            return ("Frontend", "Frontend - Styles & Design", False)
         if norm.startswith("frontend/src/"):
-            return ("Frontend", "Frontend - Composants & UI", False, False)
+            return ("Frontend", "Frontend - Composants & UI", False)
         if norm == "frontend/index.html":
-            return ("Frontend", "Frontend - HTML Entrypoint", False, False)
+            return ("Frontend", "Frontend - HTML Entrypoint", False)
         if norm == "frontend/package.json":
-            return ("Configuration", "Config - Dépendances Node", False, False)
+            return ("Configuration", "Config - Dépendances Node", False)
         if basename in ("Dockerfile", ".dockerignore", ".prettierignore"):
-            return ("Infra / DevOps", "Docker & Déploiement", False, False)
+            return ("Infra / DevOps", "Docker & Déploiement", False)
         if any(norm.startswith(f"frontend/{prefix}") for prefix in ("vite.config", "vitest.config", "eslint.config", "tsconfig")):
-            return ("Frontend", "Frontend - Outillage & Build", False, False)
-        return ("Frontend", "Frontend - Autre", False, False)
+            return ("Frontend", "Frontend - Outillage & Build", False)
+        return ("Frontend", "Frontend - Autre", False)
 
-    # 4. Infra & DevOps racine
+    # 3. Infra & DevOps racine
     if norm in ("compose.yaml", "docker-compose.yml", ".gitignore", ".env.example", ".env"):
-        return ("Infra / DevOps", "Docker & Déploiement", False, False)
+        return ("Infra / DevOps", "Docker & Déploiement", False)
 
-    # 5. Documentation
+    # 4. Documentation
     if norm.endswith(".md"):
-        return ("Documentation", "Documentation Markdown", False, False)
+        return ("Documentation", "Documentation Markdown", False)
 
-    # 6. Configuration racine
+    # 5. Configuration racine
     if basename in ("pyproject.toml", "package.json"):
-        return ("Configuration", "Config - Dépendances", False, False)
+        return ("Configuration", "Config - Dépendances", False)
 
-    return ("Autre", "Fichiers Divers", False, False)
+    return ("Autre", "Fichiers Divers", False)
 
 
 # ==============================================================================
@@ -293,7 +286,7 @@ def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
                 comments += 1
                 continue
 
-        # JSON, Lockfile, Markdown n'ont pas de commentaires syntaxiques de code traités ici
+        # JSON et Markdown n'ont pas de commentaires syntaxiques de code traités ici
 
     return total, blank, comments
 
@@ -338,12 +331,15 @@ def collect_metrics(root: Path) -> List[FileMetric]:
     metrics: List[FileMetric] = []
 
     for rel_path in files:
+        if os.path.basename(rel_path) in LOCKFILE_NAMES:
+            continue
+
         full_path = root / rel_path
         if not full_path.is_file():
             continue
 
         lang = detect_language(rel_path, full_path)
-        domain, subdomain, is_lockfile, is_test = classify_file(rel_path)
+        domain, subdomain, is_test = classify_file(rel_path)
         total, blank, comments = analyze_file_content(full_path, lang)
         non_blank = total - blank
         code = max(0, non_blank - comments)
@@ -354,7 +350,6 @@ def collect_metrics(root: Path) -> List[FileMetric]:
                 language=lang,
                 domain=domain,
                 subdomain=subdomain,
-                is_lockfile=is_lockfile,
                 is_test=is_test,
                 total_lines=total,
                 blank_lines=blank,
@@ -473,22 +468,13 @@ def generate_report(
     metrics: List[FileMetric],
     mode: str = "type",
     markdown: bool = False,
-    include_lockfiles: bool = False,
     use_color: bool = True,
-    show_notes: bool = True,
     show_ratios: bool = True,
 ) -> str:
-    # Séparation code source réel vs lockfiles générés
-    source_metrics = [m for m in metrics if not m.is_lockfile]
-    lockfile_metrics = [m for m in metrics if m.is_lockfile]
-    target_metrics = metrics if include_lockfiles else source_metrics
-
-    tot_files = sum(m.files if isinstance(m, dict) else 1 for m in target_metrics)
-    tot_total = sum(m.total_lines for m in target_metrics)
-    tot_blank = sum(m.blank_lines for m in target_metrics)
-    tot_comments = sum(m.comment_lines for m in target_metrics)
-    tot_non_blank = sum(m.non_blank_lines for m in target_metrics)
-    tot_code = sum(m.code_lines for m in target_metrics)
+    tot_total = sum(m.total_lines for m in metrics)
+    tot_blank = sum(m.blank_lines for m in metrics)
+    tot_comments = sum(m.comment_lines for m in metrics)
+    tot_non_blank = sum(m.non_blank_lines for m in metrics)
 
     output = []
     headers = ["Catégorie / Périmètre", "Fichiers", "Total", "Vide", "Commentaires", "Hors Vide (SLOC)", "% Code"]
@@ -496,9 +482,9 @@ def generate_report(
 
     if mode in ("type", "summary"):
         # Agrégation par domaine principal
-        domain_data = aggregate_group(target_metrics, lambda m: m.domain)
+        domain_data = aggregate_group(metrics, lambda m: m.domain)
         # Tri : Backend, Frontend, Infra, Config, Docs, etc.
-        order = ["Backend", "Frontend", "Infra / DevOps", "Configuration", "Documentation", "Lockfiles (Générés)", "Autre"]
+        order = ["Backend", "Frontend", "Infra / DevOps", "Configuration", "Documentation", "Autre"]
         sorted_keys = sorted(domain_data.keys(), key=lambda k: (order.index(k) if k in order else 99, -domain_data[k]["non_blank"]))
 
         rows = []
@@ -516,8 +502,8 @@ def generate_report(
             ])
 
         total_row = [
-            "TOTAL CODE SOURCE" if not include_lockfiles else "TOTAL PROJET",
-            str(len(target_metrics)),
+            "TOTAL CODE SOURCE",
+            str(len(metrics)),
             f"{tot_total:,}",
             f"{tot_blank:,}",
             f"{tot_comments:,}",
@@ -528,7 +514,7 @@ def generate_report(
         output.append(table_str)
 
     elif mode in ("subtypes", "detailed"):
-        sub_data = aggregate_group(target_metrics, lambda m: m.subdomain)
+        sub_data = aggregate_group(metrics, lambda m: m.subdomain)
         sorted_keys = sorted(sub_data.keys(), key=lambda k: -sub_data[k]["non_blank"])
 
         rows = []
@@ -547,7 +533,7 @@ def generate_report(
 
         total_row = [
             "TOTAL",
-            str(len(target_metrics)),
+            str(len(metrics)),
             f"{tot_total:,}",
             f"{tot_blank:,}",
             f"{tot_comments:,}",
@@ -559,7 +545,7 @@ def generate_report(
         output.append(table_str)
 
     elif mode == "language":
-        lang_data = aggregate_group(target_metrics, lambda m: m.language)
+        lang_data = aggregate_group(metrics, lambda m: m.language)
         sorted_keys = sorted(lang_data.keys(), key=lambda k: -lang_data[k]["non_blank"])
 
         rows = []
@@ -578,7 +564,7 @@ def generate_report(
 
         total_row = [
             "TOTAL",
-            str(len(target_metrics)),
+            str(len(metrics)),
             f"{tot_total:,}",
             f"{tot_blank:,}",
             f"{tot_comments:,}",
@@ -592,7 +578,7 @@ def generate_report(
     elif mode == "files":
         f_headers = ["Chemin du fichier", "Domaine", "Langage", "Total", "Vide", "Comms", "Hors Vide"]
         f_align = ["left", "left", "left", "right", "right", "right", "right"]
-        sorted_m = sorted(target_metrics, key=lambda m: (m.domain, -m.non_blank_lines))
+        sorted_m = sorted(metrics, key=lambda m: (m.domain, -m.non_blank_lines))
         rows = [
             [
                 m.path,
@@ -615,19 +601,6 @@ def generate_report(
             f"{tot_non_blank:,}",
         ]
         output.append(format_table(f_headers, rows, f_align, total_row, markdown=markdown, use_color=use_color))
-
-    # Note sur les lockfiles si exclus
-    if show_notes and not include_lockfiles and lockfile_metrics:
-        lock_total = sum(m.total_lines for m in lockfile_metrics)
-        lock_non_blank = sum(m.non_blank_lines for m in lockfile_metrics)
-        note = (
-            f"\n* Note d'analyse : Les lockfiles générés ({len(lockfile_metrics)} fichiers, "
-            f"{lock_total:,} lignes au total, {lock_non_blank:,} lignes hors vide dont "
-            f"{next((m.non_blank_lines for m in lockfile_metrics if 'package-lock' in m.path), 0):,} dans package-lock.json) "
-            f"ont été isolés pour préserver la fidélité des statistiques de code artisanal. "
-            f"(Utilisez --include-lockfiles pour les intégrer).* "
-        )
-        output.append(note)
 
     # Ratios clés
     if show_ratios:
@@ -706,11 +679,6 @@ def main():
         help="Exporte l'ensemble des métriques brutes et agrégées au format JSON",
     )
     parser.add_argument(
-        "--include-lockfiles",
-        action="store_true",
-        help="Inclut les lockfiles machine (uv.lock, package-lock.json) dans le décompte global",
-    )
-    parser.add_argument(
         "--no-color",
         action="store_true",
         help="Désactive la coloration ANSI du terminal",
@@ -732,9 +700,9 @@ def main():
             "files_analyzed": len(metrics),
             "files": [asdict(m) for m in metrics],
             "summary": {
-                "by_domain": aggregate_group([m for m in metrics if not m.is_lockfile or args.include_lockfiles], lambda m: m.domain),
-                "by_subdomain": aggregate_group([m for m in metrics if not m.is_lockfile or args.include_lockfiles], lambda m: m.subdomain),
-                "by_language": aggregate_group([m for m in metrics if not m.is_lockfile or args.include_lockfiles], lambda m: m.language),
+                "by_domain": aggregate_group(metrics, lambda m: m.domain),
+                "by_subdomain": aggregate_group(metrics, lambda m: m.subdomain),
+                "by_language": aggregate_group(metrics, lambda m: m.language),
             }
         }
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -752,13 +720,13 @@ def main():
     if mode == "all":
         # Affiche la vue globale, puis par langage, puis détaillée
         print("=== 1. VUE SYNTHÉTIQUE PAR DOMAINE ===")
-        print(generate_report(metrics, mode="type", markdown=args.markdown, include_lockfiles=args.include_lockfiles, use_color=use_color, show_notes=False, show_ratios=False))
+        print(generate_report(metrics, mode="type", markdown=args.markdown, use_color=use_color, show_ratios=False))
         print("\n=== 2. VUE PAR LANGAGE ET FORMAT ===")
-        print(generate_report(metrics, mode="language", markdown=args.markdown, include_lockfiles=args.include_lockfiles, use_color=use_color, show_notes=False, show_ratios=False))
+        print(generate_report(metrics, mode="language", markdown=args.markdown, use_color=use_color, show_ratios=False))
         print("\n=== 3. VUE DÉTAILLÉE PAR SOUS-DOMAINE ===")
-        print(generate_report(metrics, mode="subtypes", markdown=args.markdown, include_lockfiles=args.include_lockfiles, use_color=use_color, show_notes=True, show_ratios=True))
+        print(generate_report(metrics, mode="subtypes", markdown=args.markdown, use_color=use_color, show_ratios=True))
     else:
-        report = generate_report(metrics, mode=mode, markdown=args.markdown, include_lockfiles=args.include_lockfiles, use_color=use_color)
+        report = generate_report(metrics, mode=mode, markdown=args.markdown, use_color=use_color)
         print(report)
 
 
