@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-scripts/count_loc.py - Analyse statique intelligente des lignes de code (LOC / SLOC).
+sloc.py - Smart static analysis of lines of code (LOC / SLOC).
 
-Fonctionnalités :
-- Analyse intelligente : ignore les lockfiles générés (package-lock.json, uv.lock).
-- Mesure précise : Total, Lignes vides, Commentaires et Lignes hors vide (SLOC).
-- Ventilation multi-niveaux :
-    * Par domaine fonctionnel (Backend, Frontend, Infra/DevOps, Config/Docs)
-    * Par sous-type détaillé (Domaine, Tests, Migrations, Commandes, UI, Styles, etc.)
-    * Par langage de programmation / format
-    * Fichier par fichier
-- Calcul des ratios d'ingénierie logicielle (Couverture de tests en LOC, ratio Backend/Frontend, etc.).
-- Sorties disponibles : Console formatée (avec ou sans couleurs), Markdown (--markdown), JSON (--json).
+Features:
+- Smart analysis: ignores generated lockfiles (package-lock.json, uv.lock).
+- Accurate metrics: total, blank, comment, and non-blank lines (SLOC).
+- Multi-level breakdown:
+    * By functional domain (Backend, Frontend, Infra/DevOps, Config/Docs)
+    * By detailed subtype (Domain, Tests, Migrations, Commands, UI, Styles, etc.)
+    * By programming language / format
+    * File by file
+- Software engineering ratios (test coverage by LOC, Backend/Frontend ratio, etc.).
+- Available outputs: formatted console (with or without colors), Markdown (--markdown), JSON (--json).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 # ==============================================================================
-# Modèle de données
+# Data model
 # ==============================================================================
 
 @dataclass
@@ -47,7 +47,7 @@ class FileMetric:
 
 
 # ==============================================================================
-# Règles de classification
+# Classification rules
 # ==============================================================================
 
 LOCKFILE_NAMES = {
@@ -140,12 +140,12 @@ def detect_language(path: str, filepath: Optional[Path] = None) -> str:
                 if executable in ("sh", "bash", "dash", "ksh", "zsh", "fish"):
                     return "Shell"
 
-    return "Autre"
+    return "Other"
 
 
 def classify_file(rel_path: str) -> Tuple[str, str, bool]:
     """
-    Retourne un tuple: (domaine_principal, sous_domaine, est_test)
+    Return a tuple: (primary_domain, subdomain, is_test).
     """
     basename = os.path.basename(rel_path)
     norm = rel_path.replace("\\", "/")
@@ -157,16 +157,16 @@ def classify_file(rel_path: str) -> Tuple[str, str, bool]:
         if norm.startswith("backend/cinema/migrations/"):
             return ("Backend", "Backend - Migrations", False)
         if norm.startswith("backend/cinema/management/"):
-            return ("Backend", "Backend - Commandes CLI", False)
+            return ("Backend", "Backend - CLI Commands", False)
         if norm.startswith("backend/cinema/"):
-            return ("Backend", "Backend - Domaine & API", False)
+            return ("Backend", "Backend - Domain & API", False)
         if norm.startswith("backend/config/") or norm == "backend/manage.py":
             return ("Backend", "Backend - Config & Core", False)
         if norm == "backend/pyproject.toml":
-            return ("Configuration", "Config - Dépendances Python", False)
+            return ("Configuration", "Config - Python Dependencies", False)
         if basename in ("Dockerfile", ".dockerignore"):
-            return ("Infra / DevOps", "Docker & Déploiement", False)
-        return ("Backend", "Backend - Autre", False)
+            return ("Infra / DevOps", "Docker & Deployment", False)
+        return ("Backend", "Backend - Other", False)
 
     # 2. Frontend
     if norm.startswith("frontend/"):
@@ -175,39 +175,39 @@ def classify_file(rel_path: str) -> Tuple[str, str, bool]:
         if norm.startswith("frontend/src/") and norm.endswith(".css"):
             return ("Frontend", "Frontend - Styles & Design", False)
         if norm.startswith("frontend/src/"):
-            return ("Frontend", "Frontend - Composants & UI", False)
+            return ("Frontend", "Frontend - Components & UI", False)
         if norm == "frontend/index.html":
             return ("Frontend", "Frontend - HTML Entrypoint", False)
         if norm == "frontend/package.json":
-            return ("Configuration", "Config - Dépendances Node", False)
+            return ("Configuration", "Config - Node Dependencies", False)
         if basename in ("Dockerfile", ".dockerignore", ".prettierignore"):
-            return ("Infra / DevOps", "Docker & Déploiement", False)
+            return ("Infra / DevOps", "Docker & Deployment", False)
         if any(norm.startswith(f"frontend/{prefix}") for prefix in ("vite.config", "vitest.config", "eslint.config", "tsconfig")):
-            return ("Frontend", "Frontend - Outillage & Build", False)
-        return ("Frontend", "Frontend - Autre", False)
+            return ("Frontend", "Frontend - Tooling & Build", False)
+        return ("Frontend", "Frontend - Other", False)
 
-    # 3. Infra & DevOps racine
+    # 3. Root-level infrastructure and DevOps
     if norm in ("compose.yaml", "docker-compose.yml", ".gitignore", ".env.example", ".env"):
-        return ("Infra / DevOps", "Docker & Déploiement", False)
+        return ("Infra / DevOps", "Docker & Deployment", False)
 
     # 4. Documentation
     if norm.endswith(".md"):
         return ("Documentation", "Documentation Markdown", False)
 
-    # 5. Configuration racine
+    # 5. Root-level configuration
     if basename in ("pyproject.toml", "package.json"):
-        return ("Configuration", "Config - Dépendances", False)
+        return ("Configuration", "Config - Dependencies", False)
 
-    return ("Autre", "Fichiers Divers", False)
+    return ("Other", "Miscellaneous Files", False)
 
 
 # ==============================================================================
-# Analyseur de lignes et de commentaires
+# Line and comment analyzer
 # ==============================================================================
 
 def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
     """
-    Analyse le contenu d'un fichier et renvoie :
+    Analyze a file's contents and return:
     (total_lines, blank_lines, comment_lines)
     """
     try:
@@ -220,7 +220,7 @@ def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
     blank = 0
     comments = 0
 
-    # État pour les commentaires multilignes
+    # Multiline comment state
     in_block_comment = False
     block_delimiter = ""
 
@@ -241,7 +241,7 @@ def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
             if stripped.startswith('"""') or stripped.startswith("'''"):
                 delim = stripped[:3]
                 comments += 1
-                # Si le délimiteur ne se ferme pas sur la même ligne
+                # Enter multiline mode if the delimiter does not close on this line
                 if stripped.count(delim) < 2 or len(stripped) == 3:
                     in_block_comment = True
                     block_delimiter = delim
@@ -286,20 +286,20 @@ def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
                 comments += 1
                 continue
 
-        # JSON et Markdown n'ont pas de commentaires syntaxiques de code traités ici
+        # JSON and Markdown have no code comment syntax handled here
 
     return total, blank, comments
 
 
 # ==============================================================================
-# Collecte des fichiers
+# File collection
 # ==============================================================================
 
 def get_tracked_or_all_files(root: Path) -> List[str]:
     """
-    Récupère la liste des fichiers à analyser.
-    Privilégie 'git ls-files' pour ignorer d'office les fichiers non-versionnés / caches.
-    En l'absence de git, utilise os.walk en ignorant les répertoires standards.
+    Return the list of files to analyze.
+    Prefer 'git ls-files' to automatically ignore untracked files and caches.
+    Without Git, use os.walk while ignoring standard directories.
     """
     try:
         proc = subprocess.run(
@@ -315,7 +315,7 @@ def get_tracked_or_all_files(root: Path) -> List[str]:
     except Exception:
         pass
 
-    # Fallback récursif manuel
+    # Manual recursive fallback
     collected = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in IGNORED_DIRECTORIES]
@@ -363,7 +363,7 @@ def collect_metrics(root: Path) -> List[FileMetric]:
 
 
 # ==============================================================================
-# Formatage et Affichage
+# Formatting and display
 # ==============================================================================
 
 class Colors:
@@ -386,7 +386,7 @@ def format_table(
     markdown: bool = False,
     use_color: bool = True,
 ) -> str:
-    """Génère un tableau ASCII ou Markdown propre."""
+    """Generate a clean ASCII or Markdown table."""
     col_widths = [len(h) for h in headers]
     for row in rows:
         for i, val in enumerate(row):
@@ -417,7 +417,7 @@ def format_table(
         if total_row:
             lines.append("| " + " | ".join(format_cell(c, i) for i, c in enumerate(total_row)) + " |")
     else:
-        # Style terminal élégant
+        # Terminal styling
         b = Colors.BOLD if use_color else ""
         r = Colors.RESET if use_color else ""
         c_cyan = Colors.CYAN if use_color else ""
@@ -461,7 +461,7 @@ def aggregate_group(metrics: List[FileMetric], group_key_fn) -> Dict[str, Dict[s
 
 
 # ==============================================================================
-# Rapport complet
+# Full report
 # ==============================================================================
 
 def generate_report(
@@ -477,14 +477,14 @@ def generate_report(
     tot_non_blank = sum(m.non_blank_lines for m in metrics)
 
     output = []
-    headers = ["Catégorie / Périmètre", "Fichiers", "Total", "Vide", "Commentaires", "Hors Vide (SLOC)", "% Code"]
+    headers = ["Category / Scope", "Files", "Total", "Blank", "Comments", "Non-Blank (SLOC)", "% Code"]
     alignments = ["left", "right", "right", "right", "right", "right", "right"]
 
     if mode in ("type", "summary"):
-        # Agrégation par domaine principal
+        # Aggregate by primary domain
         domain_data = aggregate_group(metrics, lambda m: m.domain)
-        # Tri : Backend, Frontend, Infra, Config, Docs, etc.
-        order = ["Backend", "Frontend", "Infra / DevOps", "Configuration", "Documentation", "Autre"]
+        # Sort Backend, Frontend, Infra, Config, Docs, etc.
+        order = ["Backend", "Frontend", "Infra / DevOps", "Configuration", "Documentation", "Other"]
         sorted_keys = sorted(domain_data.keys(), key=lambda k: (order.index(k) if k in order else 99, -domain_data[k]["non_blank"]))
 
         rows = []
@@ -502,7 +502,7 @@ def generate_report(
             ])
 
         total_row = [
-            "TOTAL CODE SOURCE",
+            "TOTAL SOURCE CODE",
             str(len(metrics)),
             f"{tot_total:,}",
             f"{tot_blank:,}",
@@ -540,7 +540,7 @@ def generate_report(
             f"{tot_non_blank:,}",
             "100.0 %",
         ]
-        table_str = format_table(["Sous-Domaine Détaillé", "Fichiers", "Total", "Vide", "Commentaires", "Hors Vide", "% Total"],
+        table_str = format_table(["Detailed Subdomain", "Files", "Total", "Blank", "Comments", "Non-Blank", "% Total"],
                                  rows, alignments, total_row, markdown=markdown, use_color=use_color)
         output.append(table_str)
 
@@ -571,12 +571,12 @@ def generate_report(
             f"{tot_non_blank:,}",
             "100.0 %",
         ]
-        table_str = format_table(["Langage / Format", "Fichiers", "Total", "Vide", "Commentaires", "Hors Vide", "% Total"],
+        table_str = format_table(["Language / Format", "Files", "Total", "Blank", "Comments", "Non-Blank", "% Total"],
                                  rows, alignments, total_row, markdown=markdown, use_color=use_color)
         output.append(table_str)
 
     elif mode == "files":
-        f_headers = ["Chemin du fichier", "Domaine", "Langage", "Total", "Vide", "Comms", "Hors Vide"]
+        f_headers = ["File Path", "Domain", "Language", "Total", "Blank", "Comments", "Non-Blank"]
         f_align = ["left", "left", "left", "right", "right", "right", "right"]
         sorted_m = sorted(metrics, key=lambda m: (m.domain, -m.non_blank_lines))
         rows = [
@@ -602,93 +602,93 @@ def generate_report(
         ]
         output.append(format_table(f_headers, rows, f_align, total_row, markdown=markdown, use_color=use_color))
 
-    # Ratios clés
+    # Key ratios
     if show_ratios:
-        backend_app = sum(m.non_blank_lines for m in metrics if m.subdomain == "Backend - Domaine & API")
+        backend_app = sum(m.non_blank_lines for m in metrics if m.subdomain == "Backend - Domain & API")
         backend_tests = sum(m.non_blank_lines for m in metrics if m.subdomain == "Backend - Tests")
         backend_total = sum(m.non_blank_lines for m in metrics if m.domain == "Backend")
         frontend_total = sum(m.non_blank_lines for m in metrics if m.domain == "Frontend")
-        frontend_app = sum(m.non_blank_lines for m in metrics if m.subdomain in ("Frontend - Composants & UI", "Frontend - Styles & Design"))
+        frontend_app = sum(m.non_blank_lines for m in metrics if m.subdomain in ("Frontend - Components & UI", "Frontend - Styles & Design"))
         frontend_tests = sum(m.non_blank_lines for m in metrics if m.subdomain == "Frontend - Tests")
 
         ratios = []
         if backend_app > 0 and backend_tests > 0:
             ratio_bt = (backend_tests / backend_app) * 100
-            ratios.append(f"- **Ratio Tests Backend / Code Métier** : {ratio_bt:.1f} % ({backend_tests} lignes de tests pour {backend_app} lignes de code applicatif)")
+            ratios.append(f"- **Backend Tests / Application Code Ratio**: {ratio_bt:.1f}% ({backend_tests} test lines for {backend_app} application code lines)")
         if frontend_total > 0 and backend_total > 0:
             ratio_bf = (backend_total / (backend_total + frontend_total)) * 100
-            ratios.append(f"- **Équilibre Backend vs Frontend** : {ratio_bf:.1f} % Backend ({backend_total} L) / {100 - ratio_bf:.1f} % Frontend ({frontend_total} L)")
+            ratios.append(f"- **Backend vs Frontend Balance**: {ratio_bf:.1f}% Backend ({backend_total} lines) / {100 - ratio_bf:.1f}% Frontend ({frontend_total} lines)")
         if frontend_app > 0 and frontend_tests > 0:
             ratio_ft = (frontend_tests / frontend_app) * 100
-            ratios.append(f"- **Ratio Tests Frontend / UI Code** : {ratio_ft:.1f} % ({frontend_tests} lignes de tests pour {frontend_app} lignes UI)")
+            ratios.append(f"- **Frontend Tests / UI Code Ratio**: {ratio_ft:.1f}% ({frontend_tests} test lines for {frontend_app} UI lines)")
 
         if ratios:
-            output.append("\n### Ratios et Indicateurs Clés :\n" + "\n".join(ratios))
+            output.append("\n### Key Ratios and Indicators:\n" + "\n".join(ratios))
 
     return "\n".join(output)
 
 
 # ==============================================================================
-# Point d'entrée CLI
+# CLI entry point
 # ==============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyse statique intelligente du nombre de lignes de code (LOC / SLOC hors vide)."
+        description="Smart static analysis of lines of code (LOC / non-blank SLOC)."
     )
     parser.add_argument(
         "--root",
         "-r",
         default=".",
-        help="Chemin de la racine du projet (défaut : répertoire courant)",
+        help="Project root path (default: current directory)",
     )
     parser.add_argument(
         "--by",
         choices=["type", "subtypes", "language", "files", "all"],
         default="type",
-        help="Type d'agrégation principal (défaut : type)",
+        help="Primary aggregation type (default: type)",
     )
     parser.add_argument(
         "--detailed",
         "-d",
         action="store_true",
-        help="Affiche le découpage détaillé par sous-catégories (équivaut à --by subtypes)",
+        help="Show the detailed breakdown by subcategory (equivalent to --by subtypes)",
     )
     parser.add_argument(
         "--language",
         "-l",
         action="store_true",
-        help="Affiche le découpage par langage de programmation (équivaut à --by language)",
+        help="Show the breakdown by programming language (equivalent to --by language)",
     )
     parser.add_argument(
         "--files",
         "-f",
         action="store_true",
-        help="Affiche le détail fichier par fichier (équivaut à --by files)",
+        help="Show file-by-file details (equivalent to --by files)",
     )
     parser.add_argument(
         "--markdown",
         "-m",
         action="store_true",
-        help="Formatte la sortie sous forme de tableaux Markdown",
+        help="Format output as Markdown tables",
     )
     parser.add_argument(
         "--json",
         "-j",
         action="store_true",
-        help="Exporte l'ensemble des métriques brutes et agrégées au format JSON",
+        help="Export all raw and aggregated metrics as JSON",
     )
     parser.add_argument(
         "--no-color",
         action="store_true",
-        help="Désactive la coloration ANSI du terminal",
+        help="Disable ANSI terminal colors",
     )
 
     args = parser.parse_args()
     root_path = Path(args.root).resolve()
 
     if not root_path.is_dir():
-        sys.stderr.write(f"Erreur : le répertoire '{root_path}' n'existe pas.\n")
+        sys.stderr.write(f"Error: directory '{root_path}' does not exist.\n")
         sys.exit(1)
 
     metrics = collect_metrics(root_path)
@@ -708,7 +708,7 @@ def main():
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return
 
-    # Détermination du mode
+    # Determine the output mode
     mode = args.by
     if args.detailed:
         mode = "subtypes"
@@ -718,12 +718,12 @@ def main():
         mode = "files"
 
     if mode == "all":
-        # Affiche la vue globale, puis par langage, puis détaillée
-        print("=== 1. VUE SYNTHÉTIQUE PAR DOMAINE ===")
+        # Show the overview, then language and detailed views
+        print("=== 1. DOMAIN OVERVIEW ===")
         print(generate_report(metrics, mode="type", markdown=args.markdown, use_color=use_color, show_ratios=False))
-        print("\n=== 2. VUE PAR LANGAGE ET FORMAT ===")
+        print("\n=== 2. LANGUAGE AND FORMAT VIEW ===")
         print(generate_report(metrics, mode="language", markdown=args.markdown, use_color=use_color, show_ratios=False))
-        print("\n=== 3. VUE DÉTAILLÉE PAR SOUS-DOMAINE ===")
+        print("\n=== 3. DETAILED SUBDOMAIN VIEW ===")
         print(generate_report(metrics, mode="subtypes", markdown=args.markdown, use_color=use_color, show_ratios=True))
     else:
         report = generate_report(metrics, mode=mode, markdown=args.markdown, use_color=use_color)
