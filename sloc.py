@@ -30,6 +30,7 @@ Usage:
 
 Features:
 - Smart analysis: ignores generated lockfiles (package-lock.json, uv.lock).
+- Binary files (images, fonts, archives, etc.) are excluded from line counts.
 - Accurate metrics: total, blank, comment, and non-blank lines (SLOC).
 - Multi-level breakdown:
     * By functional domain (Backend, Frontend, Scripts, Infra/DevOps, Config/Docs)
@@ -337,6 +338,15 @@ def analyze_file_content(filepath: Path, language: str) -> Tuple[int, int, int]:
 # File collection
 # ==============================================================================
 
+def is_binary_file(filepath: Path) -> bool:
+    """Use Git's NUL-byte heuristic to distinguish binary files from text."""
+    try:
+        with filepath.open("rb") as source_file:
+            return b"\0" in source_file.read(8192)
+    except OSError:
+        return False
+
+
 def get_tracked_or_all_files(root: Path) -> List[str]:
     """
     Return the list of files to analyze.
@@ -378,6 +388,8 @@ def collect_metrics(root: Path) -> List[FileMetric]:
 
         full_path = root / rel_path
         if not full_path.is_file():
+            continue
+        if is_binary_file(full_path):
             continue
 
         shebang = read_shebang(full_path)
